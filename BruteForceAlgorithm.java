@@ -12,10 +12,7 @@ import java.util.Arrays;
 public class BruteForceAlgorithm implements SolvingAlgorithm {
 
     public void solve(Board board) {
-        ArrayList<int[]> rowSolutions = findPossibleRowSolutions(board.getRowClues()[0], board.getBoard().length);
-        for (int[] arr: rowSolutions) {
-            System.out.println(Arrays.toString(arr));
-        }
+        ArrayList<ArrayList<int[]>> rowSolutions = findAllPossibleSolutions(board);
     }
 
     /**
@@ -26,7 +23,11 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
      * filled Tile and a 0 is a slashed Tile
      */
     private ArrayList<ArrayList<int[]>> findAllPossibleSolutions(Board board) {
-        return null;
+        ArrayList<ArrayList<int[]>> allSolutions = new ArrayList<>();
+        for (Clue clue : board.getRowClues()) {
+            allSolutions.add(findPossibleRowSolutions(clue, board.getBoard()[0].length));
+        }
+        return allSolutions;
     }
 
     private ArrayList<int[]> findPossibleRowSolutions(Clue clue, int rowLength) {
@@ -38,49 +39,70 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
             possibleSolutions.add(new int[rowLength]);
             return possibleSolutions;
         }
-        // an Array of ints used to keep track of where each filled block must originally start
-        int[] startingIndices = new int[clue.getClue().length];
-        // an Array of ints used to keep track of where each filled block is currently starting
-        int[] currentIndices = new int[clue.getClue().length];
+        // an Array of ints used to keep track of starting indices
+        int[][] indices = new int[clue.getClue().length][clue.getClue().length];
         // computes starting indices
         int currentIndex = 0;
         for (int i = 0; i < clue.getClue().length; i++) {
             int currentClue = clue.getClue()[i].getValue();
-            startingIndices[i] = currentIndex;
-            currentIndices[i] = currentIndex;
+            // add to all the initial Arrays
+            for (int[] arr: indices) {
+                arr[i] = currentIndex;
+            }
             // add 1 for leftmost solving
             currentIndex += currentClue + 1;
         }
         // compute the rightmost possible indices to signal when to step
         int[] rightmostIndices = getRightmostIndices(clue, rowLength);
         // while the current indices have not become the same as the rightmost indices
-        while (!Arrays.equals(currentIndices, rightmostIndices)) {
-            System.out.println("rightmost: " + Arrays.toString(rightmostIndices));
-            System.out.println(Arrays.toString(currentIndices));
+        while (!Arrays.equals(indices[indices.length - 1], rightmostIndices)) {
             // always starts at the farthest right index
-            for (int i = currentIndices.length - 1; i >= 0; i--) {
+            for (int i = indices.length - 1; i >= 0; i--) {
                 // move over one permutation position to the right until the given index has hit the rightmost
-                while (currentIndices[i] <= rightmostIndices[i]) {
+                while (indices[i][i] <= rightmostIndices[i]) {
                     // add the permutation, then increase the current index
-                    possibleSolutions.add(completeSolutionFromIndices(clue, currentIndices, rowLength));
-                    if (currentIndices[i] < rightmostIndices[i]) {
-                        currentIndices[i]++;
+                    int[] addedSolution = completeSolutionFromIndices(clue, indices[i], rowLength);
+                    // only add a solution if it has not just been added
+                    if (possibleSolutions.size() == 0 ||
+                            !Arrays.equals(possibleSolutions.get(possibleSolutions.size() - 1), addedSolution)) {
+                        possibleSolutions.add(addedSolution);
+                    }
+                    if (indices[i][i] < rightmostIndices[i]) {
+                        indices[i][i]++;
                     }
                     else break;
                 }
                 // if this index is not the leftmost index and the index before is not already at its rightmost index,
                 // increase the starting index of the one before
-                if (i > 0 && startingIndices[i - 1] < rightmostIndices[i - 1]) {
+                if (i > 0 && indices[i - 1][i - 1] < rightmostIndices[i - 1]) {
+                    // if the clue to the left is the leftmost, everything must move over 1 from leftmost
+//                    if (i == 1) {
+//                        for (int j = 0; j < leftmostStartingIndices.length; j++) {
+//                            leftmostStartingIndices[j]++;
+//                            startingIndices[j] = leftmostStartingIndices[j];
+//                            currentIndices[j] = leftmostStartingIndices[j];
+//                        }
+//                        break;
+//                    }
+                    int j = i - 1;
                     // increase the starting indices from the one previous
-                    for (int j = i - 1; j < startingIndices.length; j++) {
+                    for (int k = j; k < indices.length; k++) {
                         // increment, then reset
-                        startingIndices[j]++;
-                        currentIndices[j] = startingIndices[j];
+                        indices[j][k]++;
+                        for (int m = j + 1; m < indices.length; m++) {
+                            indices[m][k] = indices[j][k];
+                        }
                     }
                     // must break so everything can restart
                     break;
                 }
             }
+        }
+        // finally add the rightmost solution if not already done so
+        int[] rightmostSolution = completeSolutionFromIndices(clue, rightmostIndices, rowLength);
+        if (possibleSolutions.size() == 0 ||
+                !Arrays.equals(possibleSolutions.get(possibleSolutions.size() - 1), rightmostSolution)) {
+            possibleSolutions.add(rightmostSolution);
         }
         return possibleSolutions;
     }
