@@ -24,9 +24,9 @@ public class BoardPainter extends JPanel implements MouseListener, KeyListener {
     final Color fillColor = new Color(127, 96, 175);
     final Color borderColor = Color.black;
     final Color filledBorderColor = Color.black;
-    final Color fontBackground = new Color (60, 60, 60);
+    final Color fontBackground = new Color (120, 120, 120);
     final Color fontColor = Color.white;
-    final Color fontColorSlashed = new Color(100, 60, 140);
+    final Color fontColorSlashed = Color.black;
 
     /**
      * Creates a BoardPainter Object for the given Board within the given JFrame
@@ -154,12 +154,10 @@ public class BoardPainter extends JPanel implements MouseListener, KeyListener {
                 // x and y coordinates of this Tiles upper left corner
                 int x = startCorner + (c * tileSize);
                 int y = startCorner + (r * tileSize);
-                // draw the Tile based on its state
-                int currentState = currentTile.getState();
-                if (currentState == 1) {
+                if (currentTile.isFilled()) {
                     drawFilledTile(x, y, tileSize, g2d);
                 }
-                else if (currentState == 2) {
+                else if (currentTile.isSlashed()) {
                     drawSlashedTile(x, y, tileSize, g2d);
                 }
                 else {
@@ -248,7 +246,7 @@ public class BoardPainter extends JPanel implements MouseListener, KeyListener {
      * @param h int height of a bounding rectangle
      * @param g a Graphics Object
      */
-    public void drawCenteredString(String s, int w, int h, int initialX, int initialY, Graphics g) {
+    private void drawCenteredString(String s, int w, int h, int initialX, int initialY, Graphics g) {
         // get the FontMetrics for main font
         FontMetrics fm = g.getFontMetrics(font);
         int x = (w - fm.stringWidth(s)) / 2;
@@ -290,9 +288,9 @@ public class BoardPainter extends JPanel implements MouseListener, KeyListener {
      */
     private void affectTile(int x, int y, boolean isFilling) {
         // get the Tile which is currently being edited to make it easier to check
-        Tile editingTile = board.getBoard()[y][x];
+        Tile editingTile = board.getTile(y, x);
         // if in filling mode and already filled or in slashing mode and already slashed, empty Tile
-        if ((board.getBoard()[y][x].getState() == 1 && isFilling) || (editingTile.getState() == 2 && !isFilling)) {
+        if ((editingTile.isFilled() && isFilling) || (editingTile.isSlashed() && !isFilling)) {
             board.emptyTile(y, x);
         }
         // otherwise fill if in filling mode or slash if in slashing mode

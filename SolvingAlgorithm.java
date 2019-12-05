@@ -8,7 +8,6 @@ public interface SolvingAlgorithm {
 
     /**
      * Solves the given Board using this SolvingAlgorithm's specific algorithm.
-     * @param board a Board Object
      */
-    void solve(Board board);
+    void solve();
 }

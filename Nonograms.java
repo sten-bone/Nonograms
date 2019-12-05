@@ -52,13 +52,13 @@ public class Nonograms extends JFrame {
                 // Set up the Frame
                 Nonograms n = new Nonograms(800, 825);
                 // Adding a board for testing
-                BoardPainter testBoard = new BoardPainter(TestBoards.TEST4, n);
+                BoardPainter testBoard = new BoardPainter(TestBoards.GOAT, n);
                 n.addKeyListener(testBoard);
                 n.addBoard(testBoard);
                 n.setVisible(true);
 
                 Solver s = new Solver();
-                s.solve(testBoard.getBoard(), new BruteForceAlgorithm());
+                s.solve(new SmartBruteForceAlgorithm(testBoard));
             }
         });
     }

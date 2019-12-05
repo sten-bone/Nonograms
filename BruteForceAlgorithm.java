@@ -10,9 +10,90 @@ import java.util.Arrays;
  * @author Ben Stone
  */
 public class BruteForceAlgorithm implements SolvingAlgorithm {
+    private BoardPainter painter;
 
-    public void solve(Board board) {
-        ArrayList<ArrayList<int[]>> rowSolutions = findAllPossibleSolutions(board);
+    public BruteForceAlgorithm(BoardPainter boardPainter) {
+        this.painter = boardPainter;
+    }
+
+    /**
+     * Solves the given Board.
+     */
+    public void solve() {
+        long start = System.currentTimeMillis();
+        System.out.println("Beginning to solve Board...");
+        ArrayList<ArrayList<int[]>> rowSolutions = findAllPossibleSolutions(painter.getBoard());
+        System.out.println("All possible row solutions found...");
+        // holds current solution index for each row
+        int[] currentSolutionIndices = new int[rowSolutions.size()];
+        // holds the max index for each row's solutions
+        int[] maxSolutionIndices = getMaxRowSolutionIndices(rowSolutions);
+        iterateToSolve(start, rowSolutions, currentSolutionIndices, maxSolutionIndices);
+    }
+
+    /**
+     * Helper method which does the work of solving, which will be same for subclasses.
+     * @param startTime a long for the System time the algorithm was started (for end analysis)
+     * @param rowSolutions all the possible solutions for the Board
+     * @param currentSolutionIndices the starting indices for each row's lsolution
+     * @param maxSolutionIndices the maximum possible index for each row's solution
+     */
+    protected void iterateToSolve(long startTime, ArrayList<ArrayList<int[]>> rowSolutions, int[] currentSolutionIndices,
+                                  int[] maxSolutionIndices) {
+        // keeps track of whether or not to check a row, or if just moving back in Array
+        boolean movingBack = false;
+        // start with rows in first positions, then check them off for algorithm
+        for (int k = 0; k < currentSolutionIndices.length; k++) {
+            editRowFromSolution(k, rowSolutions.get(k).get(currentSolutionIndices[k]));
+            painter.getBoard().checkRow(k);
+        }
+        System.out.println("Beginning to solve...");
+        // while yet to go through all possible solutions
+        while (!Arrays.equals(currentSolutionIndices, maxSolutionIndices)) {
+            System.out.println(Arrays.toString(currentSolutionIndices));
+            for (int i = currentSolutionIndices.length - 1; i >= 0; i--) {
+                if (!movingBack) {
+                    editRowFromSolution(i, rowSolutions.get(i).get(currentSolutionIndices[i]));
+                    if (checkAll()) {
+                        System.out.println("Board solved correctly in " + (System.currentTimeMillis() - startTime) / 1000f +
+                                " seconds!");
+                        return;
+                    }
+                }
+                // increment index
+                if (currentSolutionIndices[i] < maxSolutionIndices[i]) {
+                    currentSolutionIndices[i]++;
+                    movingBack = false;
+                    break;
+                }
+                else {
+                    // if not at the first row and the row above the current has not yet reached its max
+                    if (i > 0 && currentSolutionIndices[i - 1] < maxSolutionIndices[i - 1]) {
+                        // increment previous row, then reset everything to end of currentSolutionIndices to 0
+                        currentSolutionIndices[i - 1]++;
+                        editRowFromSolution(i - 1, rowSolutions.get(i - 1).get(currentSolutionIndices[i - 1]));
+                        for (int j = i; j < currentSolutionIndices.length; j++) {
+                            currentSolutionIndices[j] = 0;
+                            editRowFromSolution(j, rowSolutions.get(j).get(0));
+                        }
+                        movingBack = false;
+                        break;
+                    }
+                    else movingBack = true;
+                }
+            }
+        }
+        // finally, check the last possible solution
+        for (int m = 0; m < maxSolutionIndices.length; m++) {
+            editRowFromSolution(m, rowSolutions.get(m).get(maxSolutionIndices[m]));
+        }
+        if (checkAll()) {
+            System.out.println("Board solved correctly in " + (System.currentTimeMillis() - startTime) / 1000f +
+                    " seconds!");
+            return;
+        }
+        else System.out.println("Searched for " + (System.currentTimeMillis() - startTime) / 1000f + " seconds, but" +
+                " the algorithm was unable to find a solution to this puzzle.");
     }
 
     /**
@@ -22,15 +103,15 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
      * ArrayList corresponding to all the possible solutions for the given row stored as Arrays of ints, where a 1 is a
      * filled Tile and a 0 is a slashed Tile
      */
-    private ArrayList<ArrayList<int[]>> findAllPossibleSolutions(Board board) {
+    protected ArrayList<ArrayList<int[]>> findAllPossibleSolutions(Board board) {
         ArrayList<ArrayList<int[]>> allSolutions = new ArrayList<>();
         for (Clue clue : board.getRowClues()) {
-            allSolutions.add(findPossibleRowSolutions(clue, board.getBoard()[0].length));
+            allSolutions.add(findPossibleRowSolutions(clue, board.width()));
         }
         return allSolutions;
     }
 
-    private ArrayList<int[]> findPossibleRowSolutions(Clue clue, int rowLength) {
+    protected ArrayList<int[]> findPossibleRowSolutions(Clue clue, int rowLength) {
         // setup the ArrayList for storage
         ArrayList<int[]> possibleSolutions = new ArrayList<>();
         // initial check to see if this is a zero row
@@ -76,14 +157,6 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
                 // increase the starting index of the one before
                 if (i > 0 && indices[i - 1][i - 1] < rightmostIndices[i - 1]) {
                     // if the clue to the left is the leftmost, everything must move over 1 from leftmost
-//                    if (i == 1) {
-//                        for (int j = 0; j < leftmostStartingIndices.length; j++) {
-//                            leftmostStartingIndices[j]++;
-//                            startingIndices[j] = leftmostStartingIndices[j];
-//                            currentIndices[j] = leftmostStartingIndices[j];
-//                        }
-//                        break;
-//                    }
                     int j = i - 1;
                     // increase the starting indices from the one previous
                     for (int k = j; k < indices.length; k++) {
@@ -113,7 +186,7 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
      * @param rowLength the length of the row
      * @return an Array of ints corresponding to the rightmost index of each Clue
      */
-    private int[] getRightmostIndices(Clue clue, int rowLength) {
+    protected int[] getRightmostIndices(Clue clue, int rowLength) {
         // stores the rightmost indices
         int[] rightmostIndices = new int[clue.getClue().length];
         int currentIndex = rowLength;
@@ -135,7 +208,7 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
      * @param rowLength the length of the given row
      * @return an Array of ints where a 1 corresponds to a filled tile and a 0 corresponds to a slashed tile
      */
-    private int[] completeSolutionFromIndices(Clue clue, int[] indices, int rowLength) {
+    protected int[] completeSolutionFromIndices(Clue clue, int[] indices, int rowLength) {
         int index = 0;
         int[] solution = new int[rowLength];
         for (int i = 0; i < clue.getClue().length; i++) {
@@ -158,5 +231,44 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
             index++;
         }
         return solution;
+    }
+
+    /**
+     * Edits the specific row based on the given Array solution. Also repaints the Board.
+     * @param row an int corresponding to a specific row
+     * @param solution an Array of ints corresponding to a possible solution
+     */
+    protected void editRowFromSolution(int row, int[] solution) {
+        for (int i = 0; i < solution.length; i++) {
+            if (solution[i] == 1) {
+                painter.getBoard().fillTile(row, i);
+            }
+            else painter.getBoard().slashTile(row, i);
+        }
+        painter.repaint();
+    }
+
+    /**
+     * Gets the number of possible solutions for each row.
+     * @param solutions all of the possible solutions for the Board
+     * @return an Array of ints with the number of possible solutions for each row
+     */
+    protected int[] getMaxRowSolutionIndices(ArrayList<ArrayList<int[]>> solutions) {
+        int[] maxSolutionIndices = new int[solutions.size()];
+        for (int i = 0; i < solutions.size(); i++) {
+            maxSolutionIndices[i] = solutions.get(i).size() - 1;
+        }
+        return maxSolutionIndices;
+    }
+
+    /**
+     * Checks all the columns in the board for correctness, returning true if the Board is solved correctly
+     * @return true if the Board is solved and false if otherwise
+     */
+    protected boolean checkAll() {
+        for (int i = 0; i < painter.getBoard().width(); i++) {
+            painter.getBoard().checkCol(i);
+        }
+        return painter.getBoard().isSolved();
     }
 }

@@ -46,6 +46,36 @@ public class Board {
     }
 
     /**
+     * Returns the Tile in the Board at the given indices.
+     * @param row an int row
+     * @param col an int col
+     * @return the Tile at the row and column
+     */
+    public Tile getTile(int row, int col) throws IndexOutOfBoundsException {
+        if (row < 0 || row >= board.length) {
+            throw new IndexOutOfBoundsException("Row " + row + " is not a valid row!");
+        }
+        if (col < 0 || col >= board[row].length) {
+            throw new IndexOutOfBoundsException("Column " + col + " is not a valid column!");
+        }
+        return board[row][col];
+    }
+
+    /**
+     * @return this Board's width
+     */
+    public int width() {
+        return board[0].length;
+    }
+
+    /**
+     * @return this Board's height
+     */
+    public int height() {
+        return board.length;
+    }
+
+    /**
      * @return this Board object's row Clues
      */
     public Clue[] getRowClues() {
@@ -155,19 +185,19 @@ public class Board {
             if (currentClue < 0 || currentClue >= rowClue.size()) {
                 // if the tile is filled but not expected to be, uncheck all the Clues to let the user know there
                 // is an error
-                if (currentTile.getState() == 1) {
+                if (currentTile.isFilled()) {
                     uncheckRow(r);
                     return;
                 }
                 // move on if the tile is slashed
-                else if (currentTile.getState() == 2){
+                else if (currentTile.isSlashed()){
                     continue;
                 }
                 else return;
             }
 
             // if current tile is filled, increment current count
-            if (currentTile.getState() == 1) {
+            if (currentTile.isFilled()) {
                 currentCount++;
             }
 
@@ -177,7 +207,7 @@ public class Board {
             if (currentCount == currentNumberValue.getValue()) {
                 // look to see if this is at the right end of the row or has an empty or slashed tile right after,
                 // which would denote the end of this grouping and means it is correct
-                if (i + 1 >= board[r].length || board[r][i + 1].getState() == 0 || board[r][i + 1].getState() == 2) {
+                if (i + 1 >= board[r].length || board[r][i + 1].isEmpty() || board[r][i + 1].isSlashed()) {
                     // if the current NumberValue has not been checked off yet
                     if (!currentNumberValue.isChecked()) {
                         // check off this clue
@@ -195,14 +225,14 @@ public class Board {
 
             // if the expected number of Tiles has not been met or has been exceeded but the current tile is empty
             // or slashed
-            if (currentCount > 0 && currentCount != currentNumberValue.getValue() && currentTile.getState() != 1) {
+            if (currentCount > 0 && currentCount != currentNumberValue.getValue() && !currentTile.isFilled()) {
                 // uncheck the clue if necessary
                 if (currentNumberValue.isChecked()) {
                     currentNumberValue.uncheck();
                     numbersUnslashed++;
                 }
                 // if the tile is slashed keep going
-                if (currentTile.getState() == 2) {
+                if (currentTile.isSlashed()) {
                     // move to the next NumberValue in the Clue
                     currentClue++;
                     // reset number count
@@ -212,12 +242,12 @@ public class Board {
             }
 
             // if this is the last tile not empty but all the clues have not been met, uncheck all to alert user
-            if (i == board[r].length - 1 && currentClue < rowClue.size() && currentTile.getState() != 0) {
+            if (i == board[r].length - 1 && currentClue < rowClue.size() && !currentTile.isEmpty()) {
                 uncheckRow(r);
             }
 
             // end if this is an empty tile
-            if (currentTile.getState() == 0) {
+            if (currentTile.isEmpty()) {
                 return;
             }
         }
@@ -242,19 +272,19 @@ public class Board {
             if (currentClue < 0 || currentClue >= rowClue.size()) {
                 // if the tile is filled but not expected to be, uncheck all the Clues to let the user know there
                 // is an error
-                if (currentTile.getState() == 1) {
+                if (currentTile.isFilled()) {
                     uncheckRow(r);
                     return;
                 }
                 // move on if the tile is slashed
-                else if (currentTile.getState() == 2){
+                else if (currentTile.isSlashed()){
                     continue;
                 }
                 else return;
             }
 
             // if current tile is filled, increment current count
-            if (currentTile.getState() == 1) {
+            if (currentTile.isFilled()) {
                 currentCount++;
             }
 
@@ -264,7 +294,7 @@ public class Board {
             if (currentCount == currentNumberValue.getValue()) {
                 // look to see if this is at the left end of the row or has an empty or slashed tile right after (to
                 // the left), which would denote the end of this grouping and means it is correct
-                if (i - 1 < 0 || board[r][i - 1].getState() == 0 || board[r][i - 1].getState() == 2) {
+                if (i - 1 < 0 || board[r][i - 1].isEmpty() || board[r][i - 1].isSlashed()) {
                     // if the current NumberValue has not been checked off yet
                     if (!currentNumberValue.isChecked()) {
                         // check off this clue
@@ -282,14 +312,14 @@ public class Board {
 
             // if the expected number of Tiles has not been met or has been exceeded but the current tile is empty
             // or slashed
-            if (currentCount > 0 && currentCount != currentNumberValue.getValue() && currentTile.getState() != 1) {
+            if (currentCount > 0 && currentCount != currentNumberValue.getValue() && !currentTile.isFilled()) {
                 // uncheck the clue if necessary
                 if (currentNumberValue.isChecked()) {
                     currentNumberValue.uncheck();
                     numbersUnslashed++;
                 }
                 // if the tile is slashed keep going
-                if (currentTile.getState() == 2) {
+                if (currentTile.isSlashed()) {
                     // move to the next NumberValue in the Clue
                     currentClue--;
                     // reset number count
@@ -299,12 +329,12 @@ public class Board {
             }
 
             // if this is the last tile not empty but all the clues have not been met, uncheck all to alert user
-            if (i == 0 && currentClue >= 0 && currentTile.getState() != 0) {
+            if (i == 0 && currentClue >= 0 && !currentTile.isEmpty()) {
                 uncheckRow(r);
             }
 
             // end if this is an empty tile
-            if (currentTile.getState() == 0) {
+            if (currentTile.isEmpty()) {
                 return;
             }
         }
@@ -357,19 +387,19 @@ public class Board {
             if (currentClue < 0 || currentClue >= colClue.size()) {
                 // if the tile is filled but not expected to be, uncheck all the Clues to let the user know there
                 // is an error
-                if (currentTile.getState() == 1) {
+                if (currentTile.isFilled()) {
                     uncheckCol(r);
                     return;
                 }
                 // move on if the tile is slashed
-                else if (currentTile.getState() == 2){
+                else if (currentTile.isSlashed()){
                     continue;
                 }
                 else return;
             }
 
             // if current tile is filled, increment current count
-            if (currentTile.getState() == 1) {
+            if (currentTile.isEmpty()) {
                 currentCount++;
             }
 
@@ -379,7 +409,7 @@ public class Board {
             if (currentCount == currentNumberValue.getValue()) {
                 // look to see if this is at the right end of the row or has an empty or slashed tile right after,
                 // which would denote the end of this grouping and means it is correct
-                if (i + 1 >= board.length || board[i + 1][r].getState() == 0 || board[i + 1][r].getState() == 2) {
+                if (i + 1 >= board.length || board[i + 1][r].isEmpty() || board[i + 1][r].isSlashed()) {
                     // if the current NumberValue has not been checked off yet
                     if (!currentNumberValue.isChecked()) {
                         // check off this clue
@@ -396,7 +426,7 @@ public class Board {
 
             // if the expected number of Tiles has not been met or has been exceeded but the current tile is empty
             // or slashed
-            if (currentCount > 0 && currentCount != currentNumberValue.getValue() && currentTile.getState() != 1) {
+            if (currentCount > 0 && currentCount != currentNumberValue.getValue() && !currentTile.isFilled()) {
                 // uncheck the clue if necessary
                 if (currentNumberValue.isChecked()) {
                     currentNumberValue.uncheck();
@@ -413,7 +443,7 @@ public class Board {
                     }
                 }
                 // if the tile is slashed keep going
-                if (currentTile.getState() == 2) {
+                if (currentTile.isSlashed()) {
                     // move to the next NumberValue in the Clue
                     currentClue++;
                     // reset number count
@@ -423,12 +453,12 @@ public class Board {
             }
 
             // if this is the last tile not empty but all the clues have not been met, uncheck all to alert user
-            if (i == board.length - 1 && currentClue < colClue.size() && currentTile.getState() != 0) {
+            if (i == board.length - 1 && currentClue < colClue.size() && !currentTile.isEmpty()) {
                 uncheckCol(r);
             }
 
             // end if this is an empty tile
-            if (currentTile.getState() == 0) {
+            if (currentTile.isEmpty()) {
                 return;
             }
         }
@@ -453,19 +483,19 @@ public class Board {
             if (currentClue < 0 || currentClue >= colClue.size()) {
                 // if the tile is filled but not expected to be, uncheck all the Clues to let the user know there
                 // is an error
-                if (currentTile.getState() == 1) {
+                if (currentTile.isFilled()) {
                     uncheckCol(r);
                     return;
                 }
                 // move on if the tile is slashed
-                else if (currentTile.getState() == 2){
+                else if (currentTile.isSlashed()){
                     continue;
                 }
                 else return;
             }
 
             // if current tile is filled, increment current count
-            if (currentTile.getState() == 1) {
+            if (currentTile.isFilled()) {
                 currentCount++;
             }
 
@@ -475,7 +505,7 @@ public class Board {
             if (currentCount == currentNumberValue.getValue()) {
                 // look to see if this is at the left end of the row or has an empty or slashed tile right after (to
                 // the left), which would denote the end of this grouping and means it is correct
-                if (i - 1 < 0 || board[i - 1][r].getState() == 0 || board[i - 1][r].getState() == 2) {
+                if (i - 1 < 0 || board[i - 1][r].isEmpty() || board[i - 1][r].isSlashed()) {
                     // if the current NumberValue has not been checked off yet
                     if (!currentNumberValue.isChecked()) {
                         // check off this clue
@@ -492,14 +522,14 @@ public class Board {
 
             // if the expected number of Tiles has not been met or has been exceeded but the current tile is empty
             // or slashed
-            if (currentCount > 0 && currentCount != currentNumberValue.getValue() && currentTile.getState() != 1 ) {
+            if (currentCount > 0 && currentCount != currentNumberValue.getValue() && !currentTile.isFilled()) {
                 // uncheck the clue if necessary
                 if (currentNumberValue.isChecked()) {
                     currentNumberValue.uncheck();
                     numbersUnslashed++;
                 }
                 // if the tile is slashed keep going
-                if (currentTile.getState() == 2) {
+                if (currentTile.isSlashed()) {
                     // move to the next NumberValue in the Clue
                     currentClue--;
                     // reset number count
@@ -509,12 +539,12 @@ public class Board {
             }
 
             // if this is the last tile not empty but all the clues have not been met, uncheck all to alert user
-            if (i == 0 && currentClue >= 0 && currentTile.getState() != 0) {
+            if (i == 0 && currentClue >= 0 && !currentTile.isEmpty()) {
                 uncheckCol(r);
             }
 
             // end if this is an empty tile
-            if (currentTile.getState() == 0) {
+            if (currentTile.isEmpty()) {
                 return;
             }
         }

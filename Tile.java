@@ -6,28 +6,25 @@
  */
 
 public class Tile {
-    // stores the state of this tile with 0 being empty, 1 being filled, and 2 being slashed
-    private int state;
+    enum State {
+        FILLED,
+        SLASHED,
+        EMPTY
+    }
+    // stores the state of this Tile
+    private State state;
 
     /**
      * Default constructor which creates a new Tile set to empty by default
      */
     public Tile() {
-        state = 0;
-    }
-
-    /**
-     * Constructor for a new Tile object
-     * @param state an integer value representing the state of this Tile
-     */
-    public Tile(int state) {
-        this.state = state;
+        state = State.EMPTY;
     }
 
     /**
      * @return the current state of this Tile as an integer
      */
-    public int getState() {
+    public State getState() {
         return state;
     }
 
@@ -35,21 +32,42 @@ public class Tile {
      * Sets this Tile's state to empty
      */
     public void empty() {
-        state = 0;
+        state = state.EMPTY;
+    }
+
+    /**
+     * @return true if this Tile is empty
+     */
+    public boolean isEmpty() {
+        return state == State.EMPTY;
     }
 
     /**
      * Sets this Tile's state to filled
      */
     public void fill() {
-        state = 1;
+        state = State.FILLED;
+    }
+
+    /**
+     * @return true if this Tile is filled
+     */
+    public boolean isFilled() {
+        return state == State.FILLED;
     }
 
     /**
      * Sets this Tile's state to slashed
      */
     public void slash() {
-        state = 2;
+        state = State.SLASHED;
+    }
+
+    /**
+     * @return true if this Tile is slashed
+     */
+    public boolean isSlashed() {
+        return state == State.SLASHED;
     }
 
     /**
@@ -57,9 +75,9 @@ public class Tile {
      */
     public String toString() {
         switch(state) {
-            case 1:
+            case FILLED:
                 return "N";
-            case 2:
+            case SLASHED:
                 return "/";
             default:
                 return "\t";
