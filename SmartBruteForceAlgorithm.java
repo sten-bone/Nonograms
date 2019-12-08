@@ -23,7 +23,7 @@ public class SmartBruteForceAlgorithm extends BruteForceAlgorithm {
     public void solve() {
         long start = System.currentTimeMillis();
         System.out.println("Beginning to solve Board...");
-        ArrayList<ArrayList<int[]>> rowSolutions = removeImpossibleSolutions(findAllPossibleSolutions(painter.getBoard()));
+        SolutionMatrix rowSolutions = removeImpossibleSolutions(findAllPossibleSolutions(painter.getBoard()));
         System.out.println("All possible row solutions found...");
         // holds current solution index for each row
         int[] currentSolutionIndices = new int[rowSolutions.size()];
@@ -33,18 +33,25 @@ public class SmartBruteForceAlgorithm extends BruteForceAlgorithm {
 
     }
 
-    private ArrayList<ArrayList<int[]>> removeImpossibleSolutions(ArrayList<ArrayList<int[]>> possibleSolutions) {
-        int[][] fullOverlaps = findFullOverlappingRows();
+    /**
+     * Removes any solutions which are not possible based on the right-left solution for each row and column.
+     * @param possibleSolutions a SolutionMatrix Object
+     * @return the edited SolutionMatrix Object
+     */
+    private SolutionMatrix removeImpossibleSolutions(SolutionMatrix possibleSolutions) {
+        SolutionSet fullOverlaps = findFullOverlappingRows();
         // keeps track of how many solutions were removed
         int numRemoved = 0;
         // go through each overlapping solution
-        for (int i = 0; i < fullOverlaps.length; i++) {
+        for (int i = 0; i < fullOverlaps.size(); i++) {
             // must check each possible solution
             int j = 0;
             while (j < possibleSolutions.get(i).size()) {
-                int[] currentPossibleSolution = possibleSolutions.get(i).get(j);
-                for (int k = 0; k < currentPossibleSolution.length; k++) {
-                    if (fullOverlaps[i][k] == 1 && currentPossibleSolution[k] == 0) {
+                LineSolution currentPossibleSolution = possibleSolutions.get(i).get(j);
+                for (int k = 0; k < currentPossibleSolution.size(); k++) {
+                    // if the known solution and possible solution are not filled at the same index, the possible
+                    // solution must be removed from the set
+                    if (fullOverlaps.get(i).isFilled(k) && !currentPossibleSolution.isFilled(k)) {
                         possibleSolutions.get(i).remove(j);
                         numRemoved++;
                         j--;
@@ -62,27 +69,20 @@ public class SmartBruteForceAlgorithm extends BruteForceAlgorithm {
      * Gives the fully overlapped solution for each row, taking into account what was found by overlapping columns too.
      * @return an Array of Arrays pertaining to the int represented solution for each row with overlaps
      */
-    private int[][] findFullOverlappingRows() {
-        int[][] colOverlaps = findAllOverlapsForRowsOrColumns(painter.getBoard().getColClues(),
+    private SolutionSet findFullOverlappingRows() {
+        SolutionSet colOverlaps = findAllOverlapsForRowsOrColumns(painter.getBoard().getColClues(),
                 painter.getBoard().height());
-        int[][] rowOverlaps = findAllOverlapsForRowsOrColumns(painter.getBoard().getRowClues(),
+        SolutionSet rowOverlaps = findAllOverlapsForRowsOrColumns(painter.getBoard().getRowClues(),
                 painter.getBoard().width());
         // fill the overlaps for each row from colOverlaps
-        for (int i = 0; i < rowOverlaps.length; i++) {
-            for (int j = 0; j < rowOverlaps[i].length; j++) {
+        for (int i = 0; i < rowOverlaps.size(); i++) {
+            for (int j = 0; j < rowOverlaps.get(i).size(); j++) {
                 // if the Tile in the row is not guaranteed to be filled but the column overlap does, make it filled
                 // in the row too
-                if (rowOverlaps[i][j] != 1 && colOverlaps[j][i] == 1) {
-                    rowOverlaps[i][j] = 1;
+                if (!(rowOverlaps.get(i).isFilled(j)) && colOverlaps.get(j).isFilled(i)) {
+                    rowOverlaps.get(i).setFilled(j);
                 }
             }
-        }
-        for (int[] arr : colOverlaps) {
-            System.out.println(Arrays.toString(arr));
-        }
-        System.out.println("_____________________________________");
-        for (int[] arr : rowOverlaps) {
-            System.out.println(Arrays.toString(arr));
         }
         return rowOverlaps;
     }
@@ -91,22 +91,20 @@ public class SmartBruteForceAlgorithm extends BruteForceAlgorithm {
      * Finds the left-right overlapping solution of the left- and rightmost solutions for a given row or column.
      * @param clue a Clue Object for the row or column
      * @param rowColLength the size of the row or column
-     * @return an Array of ints of the overlap between the left and rightmost solutions
+     * @return a LineSolution Object
      */
-    private int[] findOverlap(Clue clue, int rowColLength) {
-        int[] leftmostIndices = getLeftMostIndices(clue, rowColLength);
+    private LineSolution findOverlap(Clue clue, int rowColLength) {
+        int[] leftmostIndices = getLeftMostIndices(clue);
         int[] rightmostIndices = getRightmostIndices(clue, rowColLength);
-        System.out.println(String.format("For %s:", Arrays.toString(clue.getClue())));
-        int[] overlappingSolution = new int[rowColLength];
+        LineSolution overlappingSolution = new LineSolution(rowColLength);
         for (int i = 0; i < clue.getClue().length; i++) {
             int currentClue = clue.getClue()[i].getValue();
             int leftExtreme = rightmostIndices[i];
             int rightExtreme = leftmostIndices[i] + currentClue - 1;
             for (int j = leftExtreme; j <= rightExtreme; j++) {
-                overlappingSolution[j] = 1;
+                overlappingSolution.setFilled(j);
             }
         }
-        System.out.println(Arrays.toString(overlappingSolution));
         return overlappingSolution;
     }
 
@@ -114,15 +112,16 @@ public class SmartBruteForceAlgorithm extends BruteForceAlgorithm {
      * Gets all the right-left overlaps for each row or column from the given Clue
      * @param clues an Array of Clue Objects
      * @param rowColLength the length of the row or column
-     * @return an Array of Arrays which pertains to overlapping solutions
+     * @return an SolutionSet of the right-left overlaps for each row or column
      */
-    private int[][] findAllOverlapsForRowsOrColumns(Clue[] clues, int rowColLength) {
-        int[][] allOverlaps = new int[clues.length][rowColLength];
+    private SolutionSet findAllOverlapsForRowsOrColumns(Clue[] clues, int rowColLength) {
+        SolutionSet allOverlaps = new SolutionSet();
         for (int i = 0; i < clues.length; i++) {
             // can only find overlap if the sum of the Clues is greater than half the row or column's length
             if (sumClue(clues[i]) > rowColLength / 2) {
-                allOverlaps[i] = findOverlap(clues[i], rowColLength);
+                allOverlaps.add(findOverlap(clues[i], rowColLength));
             }
+            else allOverlaps.add(new LineSolution(rowColLength));
         }
         return allOverlaps;
     }
@@ -130,10 +129,9 @@ public class SmartBruteForceAlgorithm extends BruteForceAlgorithm {
     /**
      * Finds the indices which correspond to the leftmost solving of this row or column.
      * @param clue a Clue Object for the row or column
-     * @param rowColLength the length of the row or column
      * @return an Array of ints corresponding to the leftmost index of each Clue
      */
-    private int[] getLeftMostIndices(Clue clue, int rowColLength) {
+    private int[] getLeftMostIndices(Clue clue) {
         // stores the leftmost indices
         int[] leftmostIndices = new int[clue.getClue().length];
         int currentIndex = 0;

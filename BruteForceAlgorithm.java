@@ -1,3 +1,4 @@
+import javax.sound.sampled.Line;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -22,7 +23,7 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
     public void solve() {
         long start = System.currentTimeMillis();
         System.out.println("Beginning to solve Board...");
-        ArrayList<ArrayList<int[]>> rowSolutions = findAllPossibleSolutions(painter.getBoard());
+        SolutionMatrix rowSolutions = findAllPossibleSolutions(painter.getBoard());
         System.out.println("All possible row solutions found...");
         // holds current solution index for each row
         int[] currentSolutionIndices = new int[rowSolutions.size()];
@@ -34,11 +35,11 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
     /**
      * Helper method which does the work of solving, which will be same for subclasses.
      * @param startTime a long for the System time the algorithm was started (for end analysis)
-     * @param rowSolutions all the possible solutions for the Board
+     * @param rowSolutions a SolutionMatrix Object of all possible solutions for this Board
      * @param currentSolutionIndices the starting indices for each row's lsolution
      * @param maxSolutionIndices the maximum possible index for each row's solution
      */
-    protected void iterateToSolve(long startTime, ArrayList<ArrayList<int[]>> rowSolutions, int[] currentSolutionIndices,
+    protected void iterateToSolve(long startTime, SolutionMatrix rowSolutions, int[] currentSolutionIndices,
                                   int[] maxSolutionIndices) {
         // keeps track of whether or not to check a row, or if just moving back in Array
         boolean movingBack = false;
@@ -99,25 +100,29 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
     /**
      * Finds all the possible solutions for each row within a given Board.
      * @param board a Board Object.
-     * @return an ArrayList of ArrayLists, with each outer ArrayList corresponding to a row in the Board, and each inner
-     * ArrayList corresponding to all the possible solutions for the given row stored as Arrays of ints, where a 1 is a
-     * filled Tile and a 0 is a slashed Tile
+     * @return a SolutionMatrix Object
      */
-    protected ArrayList<ArrayList<int[]>> findAllPossibleSolutions(Board board) {
-        ArrayList<ArrayList<int[]>> allSolutions = new ArrayList<>();
+    protected SolutionMatrix findAllPossibleSolutions(Board board) {
+        SolutionMatrix allSolutions = new SolutionMatrix(board.height());
         for (Clue clue : board.getRowClues()) {
             allSolutions.add(findPossibleRowSolutions(clue, board.width()));
         }
         return allSolutions;
     }
 
-    protected ArrayList<int[]> findPossibleRowSolutions(Clue clue, int rowLength) {
+    /**
+     * Finds all the possible solutions for a given row based on its Clue.
+     * @param clue a Clue Object
+     * @param rowLength the length of the row
+     * @return a SolutionSet of all possible solutions of this row
+     */
+    protected SolutionSet findPossibleRowSolutions(Clue clue, int rowLength) {
         // setup the ArrayList for storage
-        ArrayList<int[]> possibleSolutions = new ArrayList<>();
+        SolutionSet possibleSolutions = new SolutionSet();
         // initial check to see if this is a zero row
         if (clue.getClue().length == 1 && clue.getClue()[0].getValue() == 0) {
             // add a row with all zeros (all must be slashed)
-            possibleSolutions.add(new int[rowLength]);
+            possibleSolutions.add(new LineSolution(rowLength));
             return possibleSolutions;
         }
         // an Array of ints used to keep track of starting indices
@@ -142,10 +147,10 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
                 // move over one permutation position to the right until the given index has hit the rightmost
                 while (indices[i][i] <= rightmostIndices[i]) {
                     // add the permutation, then increase the current index
-                    int[] addedSolution = completeSolutionFromIndices(clue, indices[i], rowLength);
+                    LineSolution addedSolution = completeSolutionFromIndices(clue, indices[i], rowLength);
                     // only add a solution if it has not just been added
                     if (possibleSolutions.size() == 0 ||
-                            !Arrays.equals(possibleSolutions.get(possibleSolutions.size() - 1), addedSolution)) {
+                            !possibleSolutions.get(possibleSolutions.size() - 1).equals(addedSolution)) {
                         possibleSolutions.add(addedSolution);
                     }
                     if (indices[i][i] < rightmostIndices[i]) {
@@ -172,9 +177,9 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
             }
         }
         // finally add the rightmost solution if not already done so
-        int[] rightmostSolution = completeSolutionFromIndices(clue, rightmostIndices, rowLength);
+        LineSolution rightmostSolution = completeSolutionFromIndices(clue, rightmostIndices, rowLength);
         if (possibleSolutions.size() == 0 ||
-                !Arrays.equals(possibleSolutions.get(possibleSolutions.size() - 1), rightmostSolution)) {
+                possibleSolutions.get(possibleSolutions.size() - 1).equals(rightmostSolution)) {
             possibleSolutions.add(rightmostSolution);
         }
         return possibleSolutions;
@@ -206,29 +211,23 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
      * @param clue a Clue Object pertaining to a row
      * @param indices the indices for each Clue
      * @param rowLength the length of the given row
-     * @return an Array of ints where a 1 corresponds to a filled tile and a 0 corresponds to a slashed tile
+     * @return an LineSolution Object
      */
-    protected int[] completeSolutionFromIndices(Clue clue, int[] indices, int rowLength) {
+    protected LineSolution completeSolutionFromIndices(Clue clue, int[] indices, int rowLength) {
         int index = 0;
-        int[] solution = new int[rowLength];
+        LineSolution solution = new LineSolution(rowLength);
         for (int i = 0; i < clue.getClue().length; i++) {
             int currentClue = clue.getClue()[i].getValue();
             int targetIndex = indices[i];
             // before getting to the left index of the next clue, fill with slashed markers (0s)
             while (index < targetIndex) {
-                solution[index] = 0;
                 index++;
             }
             // fill in the clue chunk
             for (int j = 0; j < currentClue; j++) {
-                solution[index] = 1;
+                solution.setFilled(index);
                 index++;
             }
-        }
-        // fill in any remaining with slashed markers
-        while (index < rowLength) {
-            solution[index] = 0;
-            index++;
         }
         return solution;
     }
@@ -236,11 +235,11 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
     /**
      * Edits the specific row based on the given Array solution. Also repaints the Board.
      * @param row an int corresponding to a specific row
-     * @param solution an Array of ints corresponding to a possible solution
+     * @param solution a LineSolution Object corresponding to row
      */
-    protected void editRowFromSolution(int row, int[] solution) {
-        for (int i = 0; i < solution.length; i++) {
-            if (solution[i] == 1) {
+    protected void editRowFromSolution(int row, LineSolution solution) {
+        for (int i = 0; i < solution.size(); i++) {
+            if (solution.isFilled(i)) {
                 painter.getBoard().fillTile(row, i);
             }
             else painter.getBoard().slashTile(row, i);
@@ -250,10 +249,10 @@ public class BruteForceAlgorithm implements SolvingAlgorithm {
 
     /**
      * Gets the number of possible solutions for each row.
-     * @param solutions all of the possible solutions for the Board
+     * @param solutions a SolutionMatrix Object
      * @return an Array of ints with the number of possible solutions for each row
      */
-    protected int[] getMaxRowSolutionIndices(ArrayList<ArrayList<int[]>> solutions) {
+    protected int[] getMaxRowSolutionIndices(SolutionMatrix solutions) {
         int[] maxSolutionIndices = new int[solutions.size()];
         for (int i = 0; i < solutions.size(); i++) {
             maxSolutionIndices[i] = solutions.get(i).size() - 1;
